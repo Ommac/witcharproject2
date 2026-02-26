@@ -1,0 +1,8 @@
+@import './styles/theme.css';
+
+.page-layout__main > .card {
+  margin-bottom: 1.5rem;
+}
+.page-layout__main > .card:last-child {
+  margin-bottom: 0;
+}
