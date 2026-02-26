@@ -33,6 +33,7 @@ type RiskBucketKey = 'approved' | 'verificationRequired' | 'blocked';
 type TrendPoint = {
   id: string;
   riskScore: number;
+  amount: number;
   time: string;
   fullTime: string;
   ts: number;
@@ -106,6 +107,7 @@ export function DashboardAnalytics({ transactions, loading, summaryStats }: Dash
         return {
           id: tx._id,
           riskScore: Number.isFinite(tx.risk_score) ? tx.risk_score : 0,
+          amount: Number.isFinite(tx.amount) ? tx.amount : 0,
           time: formatChartTime(tx.timestamp),
           fullTime: formatFullTime(tx.timestamp),
           ts: Number.isNaN(parsedTime) ? 0 : parsedTime,
@@ -205,7 +207,8 @@ export function DashboardAnalytics({ transactions, loading, summaryStats }: Dash
                     ]}
                     labelFormatter={(_, payload) => {
                       const entry = payload?.[0]?.payload as TrendPoint | undefined;
-                      return entry?.fullTime ?? '—';
+                      if (!entry) return '—';
+                      return `${entry.fullTime} • Amount: ${formatInr(entry.amount)}`;
                     }}
                     contentStyle={tooltipStyle}
                     labelStyle={tooltipLabelStyle}
@@ -425,15 +428,33 @@ function mapToRiskBucket(tx: DbTransaction): RiskBucketKey | null {
 }
 
 function formatChartTime(value: string): string {
-  const date = new Date(value);
+  const date = parseApiUtcTimestamp(value);
   if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatFullTime(value: string): string {
-  const date = new Date(value);
+  const date = parseApiUtcTimestamp(value);
   if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleString();
+}
+
+function parseApiUtcTimestamp(value: string): Date {
+  const raw = String(value || '').trim();
+  if (!raw) return new Date('');
+
+  const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+  const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(normalized);
+  const iso = hasTimezone ? normalized : `${normalized}Z`;
+  return new Date(iso);
+}
+
+function formatInr(value: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 const tooltipStyle = {

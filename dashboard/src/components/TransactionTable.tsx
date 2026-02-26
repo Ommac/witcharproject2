@@ -90,9 +90,9 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
 }
 
 function formatAmount(value: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
+    currency: 'INR',
+    maximumFractionDigits: 0,
   }).format(value);
 }

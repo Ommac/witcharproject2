@@ -21,7 +21,7 @@ const defaultValues: TransactionInput = {
   sex: 'M',
   age: 30,
   ip_address: 732758368,
-  country: 'US',
+  country: 'India',
   phone_number: '',
 };
 
@@ -115,7 +115,7 @@ export function SimulationForm({ onSuccess, loading, error, setLoading, setError
           />
         </label>
         <label>
-          <span>Amount (USD)</span>
+          <span>Amount (₹)</span>
           <input
             type="number"
             step={0.01}
@@ -177,7 +177,7 @@ export function SimulationForm({ onSuccess, loading, error, setLoading, setError
           <input
             value={form.country}
             onChange={(e) => update('country', e.target.value)}
-            placeholder="US"
+            placeholder="India"
           />
         </label>
         <label>

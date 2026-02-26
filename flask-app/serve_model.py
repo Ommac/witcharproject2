@@ -6,7 +6,7 @@ import re
 import random
 import string
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from lime import lime_tabular
 import shap
@@ -98,7 +98,7 @@ def _send_fraud_alert_twilio(phone: str, amount: float = 0) -> bool:
         client = Client(sid, token)
         msg = f"Fraud alert: A transaction was blocked due to high fraud risk."
         if amount:
-            msg = f"Fraud alert: A transaction of ${amount:.2f} was blocked due to high fraud risk."
+            msg = f"Fraud alert: A transaction of ₹{amount:.2f} was blocked due to high fraud risk."
         client.messages.create(body=msg, from_=from_num, to=phone)
         return True
     except Exception:
@@ -165,7 +165,7 @@ def behavior_analysis(user_id: Any, amount: float, db) -> Tuple[int, List[str]]:
         # Amount deviation rules
         if avg_amount > 0:
             ratio = amount_val / avg_amount
-            if ratio > 10:
+            if ratio > 15:
                 behavior_score += 25
                 behavior_reasons.append("Amount significantly higher than usual")
             elif ratio > 5:
@@ -173,11 +173,11 @@ def behavior_analysis(user_id: Any, amount: float, db) -> Tuple[int, List[str]]:
                 behavior_reasons.append("Amount significantly higher than usual")
 
         # Velocity check: transactions in the last 60 seconds
-        cutoff = datetime.utcnow() - timedelta(seconds=60)
+        cutoff = datetime.utcnow() - timedelta(seconds=30)
         recent_count = db.count_documents(
             {"user_id": user_id_str, "timestamp": {"$gte": cutoff}}
         )
-        if recent_count > 3:
+        if len(history) >= 5 and recent_count > 5:
             behavior_score += 25
             behavior_reasons.append("Rapid transactions detected")
 
@@ -207,7 +207,7 @@ with open('models/fraud_detection_xgb_model.pkl', 'rb') as f:
 # Rule-based risk boost: allowlists for "common" device and browser
 COMMON_DEVICES = {'device_1', 'd1', 'mobile'}
 COMMON_BROWSERS = {'chrome', 'safari'}
-TYPICAL_COUNTRIES = {'us', 'india'}
+TYPICAL_COUNTRIES = {'india', 'in'}
 
 
 def _rule_boost(row) -> int:
@@ -220,7 +220,7 @@ def _rule_boost(row) -> int:
             boost += 25
     except (TypeError, AttributeError):
         boost += 25
-    # +20 if country is not US or India
+    # +20 if country is outside India baseline
     try:
         country = str(row.get('country', '')).strip().lower()
         if country not in TYPICAL_COUNTRIES:
@@ -757,6 +757,143 @@ def _velocity_detection(user_id: Any, db) -> Tuple[int, List[str]]:
         return 0, []
 
 
+def _fetch_user_history_snapshot(user_id: Any, db, limit: int = 20) -> Dict[str, Any]:
+    """
+    Fetch recent user history used for trust scoring decisions.
+
+    Returns:
+        {
+            "transaction_count": int,
+            "fraud_count": int,
+            "known_devices": list[str]
+        }
+    """
+    if db is None:
+        return {
+            "transaction_count": 0,
+            "fraud_count": 0,
+            "known_devices": [],
+        }
+
+    try:
+        user_id_str = str(user_id or "")
+        if not user_id_str:
+            return {
+                "transaction_count": 0,
+                "fraud_count": 0,
+                "known_devices": [],
+            }
+
+        cursor = (
+            db.find(
+                {"user_id": user_id_str},
+                {"device": 1, "status": 1, "decision": 1, "timestamp": 1, "_id": 0},
+            )
+            .sort("timestamp", -1)
+            .limit(int(limit))
+        )
+        history = list(cursor)
+
+        known_devices = set()
+        fraud_count = 0
+        for item in history:
+            device = str(item.get("device", "") or "").strip().lower()
+            if device:
+                known_devices.add(device)
+
+            status_upper = str(item.get("status", "") or "").strip().upper()
+            decision_upper = str(item.get("decision", "") or "").strip().upper()
+            if (
+                status_upper in {"BLOCKED", "FAILED_VERIFICATION"}
+                or decision_upper == "FRAUD_BLOCKED"
+            ):
+                fraud_count += 1
+
+        return {
+            "transaction_count": len(history),
+            "fraud_count": int(fraud_count),
+            "known_devices": sorted(list(known_devices)),
+        }
+    except Exception:
+        return {
+            "transaction_count": 0,
+            "fraud_count": 0,
+            "known_devices": [],
+        }
+
+
+def _count_recent_transactions_30s(user_id: Any, db) -> int:
+    """Count user transactions in the last 30 seconds for strict velocity overrides."""
+    if db is None:
+        return 0
+    try:
+        user_id_str = str(user_id or "")
+        if not user_id_str:
+            return 0
+        cutoff = datetime.utcnow() - timedelta(seconds=30)
+        count = db.count_documents({"user_id": user_id_str, "timestamp": {"$gte": cutoff}})
+        return int(count)
+    except Exception:
+        return 0
+
+
+def _calculate_trust_score(
+    transaction_count: int,
+    fraud_count: int,
+    known_devices: List[str],
+    current_device: str,
+) -> int:
+    """
+    Calculate trust score (0-40) based on user history and device consistency.
+    """
+    score = 0
+
+    tx_count = int(transaction_count or 0)
+    if tx_count >= 3:
+        score += 10
+    if tx_count >= 10:
+        score += 10
+
+    known = {str(dev or "").strip().lower() for dev in (known_devices or []) if str(dev or "").strip()}
+    curr = str(current_device or "").strip().lower()
+    if curr and curr in known:
+        score += 10
+
+    if int(fraud_count or 0) == 0:
+        score += 10
+
+    return int(max(0, min(40, score)))
+
+
+def _velocity_decision_override(recent_count: int) -> Tuple[Optional[str], Optional[str]]:
+    """Apply strict velocity decision overrides independent of trust adjustments."""
+    count = int(recent_count or 0)
+    if count >= 5:
+        return "BLOCK", "Rapid automated transactions detected"
+    if count >= 3:
+        return "OTP", "Suspicious rapid transactions"
+    return None, None
+
+
+def _contextual_fraud_override(location: str, amount: float, device: str) -> Optional[str]:
+    """
+    Return a blocking reason when strong contextual fraud indicators are detected.
+    """
+    loc = str(location or "").strip().lower()
+    dev = str(device or "").strip().lower()
+
+    if loc not in TYPICAL_COUNTRIES and float(amount or 0) > 20000:
+        return "High-value transaction from foreign location"
+
+    suspicious_device_markers = ("emulator", "suspicious")
+    if dev in {"unknown", "clearly_unknown", "clearly unknown"}:
+        return "Transaction blocked from clearly unknown device"
+    if any(marker in dev for marker in suspicious_device_markers):
+        return "Transaction blocked from suspicious device"
+
+    return None
+
+
 def _decision_from_score(risk_score: float) -> str:
     """
     Map final risk score to decision for the payment API.
@@ -766,7 +903,7 @@ def _decision_from_score(risk_score: float) -> str:
     except (TypeError, ValueError):
         score = 0.0
 
-    if score < 40.0:
+    if score < 35.0:
         return "APPROVE"
     if score < 70.0:
         return "OTP"
@@ -908,9 +1045,7 @@ def create_transaction():
     )
     velocity_score, velocity_reasons = _velocity_detection(user_id=user_id, db=tx_col)
 
-    combined_behavior_score = max(
-        0, int(behavior_score) + int(velocity_score)
-    )
+    combined_behavior_score = max(0, int(behavior_score) + int(velocity_score))
     combined_reasons: List[str] = []
     if behavior_reasons:
         combined_reasons.extend(behavior_reasons)
@@ -918,7 +1053,74 @@ def create_transaction():
         combined_reasons.extend(velocity_reasons)
 
     final_risk_score = float(max(0.0, min(100.0, ml_risk + combined_behavior_score)))
-    api_decision = _decision_from_score(final_risk_score)
+
+    # Step 1: user history snapshot for trust model inputs
+    history_snapshot = _fetch_user_history_snapshot(user_id=user_id, db=tx_col, limit=20)
+    transaction_count = int(history_snapshot.get("transaction_count", 0) or 0)
+    fraud_count = int(history_snapshot.get("fraud_count", 0) or 0)
+    known_devices = history_snapshot.get("known_devices", []) or []
+
+    # Step 4: strict velocity override (must execute before trust and thresholds)
+    recent_count_30s = _count_recent_transactions_30s(user_id=user_id, db=tx_col)
+    current_window_count = int(recent_count_30s) + 1
+    forced_decision, velocity_override_reason = _velocity_decision_override(current_window_count)
+
+    decision_reasons: List[str] = list(combined_reasons)
+    if velocity_override_reason:
+        decision_reasons.append(velocity_override_reason)
+
+    # Step 2: trust score derived from user history
+    trust_score = _calculate_trust_score(
+        transaction_count=transaction_count,
+        fraud_count=fraud_count,
+        known_devices=known_devices,
+        current_device=device,
+    )
+
+    # Step 5: trust-adjusted risk (skip adjustment when strict velocity block/OTP override applies)
+    if forced_decision in {"BLOCK", "OTP"}:
+        adjusted_risk = float(final_risk_score)
+    else:
+        adjusted_risk = float(max(0.0, final_risk_score - trust_score))
+
+    # Step 3: cold start for first-time users
+    cold_start_decision: Optional[str] = None
+    if transaction_count == 0 and forced_decision is None:
+        if amount_val <= 3000:
+            cold_start_decision = "APPROVE"
+            decision_reasons.append("First-time user low-value transaction")
+        else:
+            cold_start_decision = "OTP"
+            decision_reasons.append("First-time user high-value transaction requires verification")
+
+    # Step 6: contextual fraud block overrides
+    contextual_block_reason = _contextual_fraud_override(
+        location=location,
+        amount=amount_val,
+        device=device,
+    )
+
+    # Step 7: final decision resolution with override precedence
+    if forced_decision == "BLOCK":
+        api_decision = "BLOCK"
+    elif contextual_block_reason:
+        api_decision = "BLOCK"
+        decision_reasons.append(contextual_block_reason)
+    elif forced_decision == "OTP":
+        api_decision = "OTP"
+    elif cold_start_decision is not None:
+        api_decision = cold_start_decision
+    else:
+        api_decision = _decision_from_score(adjusted_risk)
+
+    # Keep reasons compact and deterministic
+    if decision_reasons:
+        seen = set()
+        decision_reasons = [
+            reason
+            for reason in decision_reasons
+            if not (reason in seen or seen.add(reason))
+        ]
 
     # Map API decision + mobile presence into stored status/decision
     if api_decision == "APPROVE":
@@ -940,8 +1142,8 @@ def create_transaction():
     # Ensure behavior_score and behavior_reasons have consistent safe values
     safe_behavior_score = int(combined_behavior_score) if combined_behavior_score is not None else 0
     safe_behavior_reasons: List[str] = []
-    if combined_reasons:
-        safe_behavior_reasons = [str(reason) for reason in combined_reasons]
+    if decision_reasons:
+        safe_behavior_reasons = [str(reason) for reason in decision_reasons]
 
     doc: Dict[str, Any] = {
         "user_id": user_id,
@@ -956,6 +1158,8 @@ def create_transaction():
         "ip_address": ip_address,
         "mobile_number": mobile_number or None,
         "risk_score": float(final_risk_score),
+        "adjusted_risk": float(adjusted_risk),
+        "trust_score": int(trust_score),
         "behavior_score": safe_behavior_score,
         "behavior_reasons": safe_behavior_reasons,
         "decision": stored_decision,
@@ -975,7 +1179,10 @@ def create_transaction():
     response_body = {
         "decision": api_decision,
         "risk_score": final_risk_score,
-        "behavior_reasons": combined_reasons,
+        "adjusted_risk": float(adjusted_risk),
+        "trust_score": int(trust_score),
+        "reasons": decision_reasons,
+        "behavior_reasons": decision_reasons,
     }
     return jsonify(response_body), 201
 

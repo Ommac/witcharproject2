@@ -7,7 +7,6 @@ export interface PaymentFormValues {
   device: string;
   browser: string;
   source: string;
-  age: string;
   ipAddress: string;
   mobileNumber: string;
 }
@@ -24,7 +23,6 @@ const defaultValues: PaymentFormValues = {
   device: "mobile",
   browser: "",
   source: "",
-  age: "",
   ipAddress: "",
   mobileNumber: ""
 };
@@ -80,7 +78,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, disabled }) => {
   return (
     <form className="card" onSubmit={handleSubmit} noValidate>
       <h1 className="card-title card-title--secure">
-        <span className="title-lock" aria-hidden="true">🔒</span>
         Secure Payment
       </h1>
       <p className="card-subtitle">
@@ -141,7 +138,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, disabled }) => {
         </label>
 
         <label className="field">
-          <span className="field-label">Amount (USD)</span>
+          <span className="field-label">Amount (₹)</span>
           <input
             type="number"
             name="amount"
@@ -240,20 +237,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, disabled }) => {
           </label>
 
           <label className="field">
-            <span className="field-label">Age</span>
-            <input
-              type="number"
-              name="age"
-              value={values.age}
-              onChange={handleChange}
-              className="field-input"
-              placeholder="e.g. 32"
-              min={0}
-              disabled={disabled}
-            />
-          </label>
-
-          <label className="field">
             <span className="field-label">IP Address</span>
             <input
               type="text"
@@ -293,9 +276,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, disabled }) => {
       </button>
 
       <div className="trust-indicators" aria-label="Trust indicators">
-        <p className="trust-note">🔒 Bank-grade encryption</p>
-        <p className="trust-note">🛡 AI fraud protection</p>
-        <p className="trust-note">⚡ Real-time risk monitoring</p>
+        <p className="trust-note">Protected by real-time fraud detection.</p>
       </div>
     </form>
   );

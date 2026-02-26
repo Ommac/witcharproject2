@@ -48,12 +48,6 @@ const App: React.FC = () => {
     if (values.source.trim()) {
       payload.source = values.source.trim();
     }
-    if (values.age.trim()) {
-      const ageNumber = Number(values.age);
-      if (!Number.isNaN(ageNumber) && ageNumber >= 0) {
-        payload.age = ageNumber;
-      }
-    }
     if (values.ipAddress.trim()) {
       payload.ip_address = values.ipAddress.trim();
     }

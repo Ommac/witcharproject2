@@ -56,7 +56,7 @@ export function DbTransactionTable({ transactions, loading, error }: DbTransacti
         <tbody>
           {transactions.map((tx) => {
             const rowClass = getRowClass(tx.status);
-            const riskTitle = formatRiskTooltip(tx.risk_score, tx.behavior_score);
+            const riskTitle = formatRiskTooltip(tx.risk_score, tx.amount, tx.behavior_score);
             const statusExplanation = explainStatus(tx.status, tx.decision);
             const contributors = getTopRiskContributors(tx);
             return (
@@ -113,17 +113,27 @@ export function DbTransactionTable({ transactions, loading, error }: DbTransacti
 }
 
 function formatAmount(value: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
+    currency: 'INR',
+    maximumFractionDigits: 0,
   }).format(value);
 }
 
 function formatTime(value: string): string {
-  const date = new Date(value);
+  const date = parseApiUtcTimestamp(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
+}
+
+function parseApiUtcTimestamp(value: string): Date {
+  const raw = String(value || '').trim();
+  if (!raw) return new Date('');
+
+  const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+  const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(normalized);
+  const iso = hasTimezone ? normalized : `${normalized}Z`;
+  return new Date(iso);
 }
 
 function getRowClass(status: DbTransaction['status']): string {
@@ -177,12 +187,13 @@ function formatDecision(decision: DbTransaction['decision']): string {
   }
 }
 
-function formatRiskTooltip(riskScore: number, behaviorScore?: number | null): string {
+function formatRiskTooltip(riskScore: number, amount: number, behaviorScore?: number | null): string {
   const riskText = Number.isFinite(riskScore) ? String(Math.round(riskScore)) : '—';
+  const amountText = formatAmount(amount);
   if (typeof behaviorScore === 'number' && Number.isFinite(behaviorScore)) {
-    return `Risk Score: ${riskText}\nBehavior Score: ${Math.round(behaviorScore)}`;
+    return `Amount: ${amountText}\nRisk Score: ${riskText}\nBehavior Score: ${Math.round(behaviorScore)}`;
   }
-  return `Risk Score: ${riskText}`;
+  return `Amount: ${amountText}\nRisk Score: ${riskText}`;
 }
 
 function formatRiskFactors(reasons?: DbTransaction['behavior_reasons']): JSX.Element {
