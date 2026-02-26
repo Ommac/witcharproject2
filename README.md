@@ -1,114 +1,159 @@
-# Machine Learning-based Fraud Detection for E-commerce and Banking Transactions
+🚀 Real-Time Payment Fraud Detection System
 
-This project aims to significantly enhance the identification of fraudulent activities within E-commerce and banking sectors. It focuses on developing advanced machine learning models that analyze transaction data, employ sophisticated feature engineering techniques, and implement real-time monitoring systems to achieve high accuracy in fraud detection.
+A real-time fraud detection system that analyzes online payment transactions and determines whether to approve, verify, or block them based on intelligent risk assessment.
 
-## Table of Contents
+The system combines machine learning, rule-based detection, behavioral analysis, trust scoring, and velocity monitoring to prevent fraudulent transactions while minimizing false positives.
 
-1. [Project Overview](#project-overview)
-2. [Data Collection and Preprocessing](#data-collection-and-preprocessing)
-3. [Exploratory Data Analysis (EDA)](#exploratory-data-analysis-eda)
-   - [Univariate Analysis](#univariate-analysis)
-   - [Bivariate Analysis](#bivariate-analysis)
-4. [Feature Engineering](#feature-engineering)
-5. [Model Building and Training](#model-building-and-training)
-   - [Fraud-IP Dataset - XGBoost Model](#fraud-ip-dataset---xgboost-model)
-   - [Credit Card Dataset - Logistic Regression with StandardScaler](#credit-card-dataset---logistic-regression-with-standardscaler)
-6. [Model Explainability Using SHAP](#model-explainability-using-shap)
-   - [Summary Plot](#summary-plot)
-   - [Force Plot](#force-plot)
-7. [Model Deployment and API Development](#model-deployment-and-api-development)
-   - [Running the Flask App](#running-the-flask-app)
-   - [Testing the API](#testing-the-api)
-   - [Building Docker Image](#building-docker-image)
-   - [Running Docker Container](#running-docker-container)
-   - [Testing the API from Postman](#testing-the-api-from-postman)
-8. [Project Report](#project-report)
-9. [Contributing](#contributing)
-10. [License](#license)
+🎯 Project Objective
 
-## Project Overview
+This system evaluates each transaction and makes a decision to:
 
-This project aims to significantly improve the identification of fraudulent activities within these sectors. It focuses on developing advanced machine learning models that analyze transaction data, employ sophisticated feature engineering techniques, and implement real-time monitoring systems to achieve high accuracy in fraud detection.
+✅ Approve legitimate payments
+🔐 Request OTP verification for suspicious activity
+⛔ Block high-risk fraudulent transactions
 
-## Data Collection and Preprocessing
+🧠 Key Features
+✔ Real-Time Risk Scoring
 
-Gather and preprocess transaction data to ensure it is clean and usable for analysis. This includes data cleaning, handling missing values, and normalization.
+ML-based fraud probability scoring
 
-## Exploratory Data Analysis (EDA)
+Rule-based fraud pattern detection
 
-Analyze customer transaction characteristics to identify patterns and trends influencing fraud detection.
+Behavioral anomaly detection
 
-### Univariate Analysis
+Velocity (rapid transaction) monitoring
 
-![Univariate Analysis](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/eda/his1.png)
+✔ Trust-Based Decision Engine
 
-### Bivariate Analysis
+Cold-start handling for first-time users
 
-For detailed insights and visualizations related to bivariate analysis, please refer to the [EDA Notebook](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/notebooks/eda.ipynb).
+Trust scoring based on user history
 
+Reduced friction for trusted users
 
-## Feature Engineering
+✔ Fraud Protection Mechanisms
 
-Create new features that enhance the predictive power of the models based on insights from EDA.
+Blocks automated rapid transaction attacks
 
-![Feature Engineering](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/eda/featured_df.png)
+Detects suspicious devices & locations
 
-## Model Building and Training
+Prevents card testing and bot attacks
 
-After training and testing multiple models, we selected the following:
+✔ OTP Verification System
 
-### Fraud-IP Dataset - XGBoost Model
+Medium-risk transactions require OTP verification
 
-![XGBoost Model](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/model-building/xg1.png)
-![XGBoost Model Evaluation](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/model-building/xg2.png)
+Failed verification flags fraud attempts
 
-### Credit Card Dataset - Logistic Regression with StandardScaler
+✔ Monitoring Dashboard
 
-![Logistic Regression Model](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/model-building/lr1.png)
-![Logistic Regression Model Evaluation](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/model-building/lr2.png)
+Live transaction monitoring
 
-## Model Explainability Using SHAP
+Risk distribution analytics
 
-### Summary Plot
+Fraud insights & detection trends
 
-<img src="https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/shap-lime/summryPlot.png" alt="Summary Plot" width="600"/>
+🏗 System Architecture
 
-### Force Plot
+1️⃣ User submits payment
+2️⃣ Backend computes ML risk score
+3️⃣ Behavior & velocity checks applied
+4️⃣ Trust score adjusts risk
+5️⃣ Decision: Approve / OTP / Block
+6️⃣ Transaction stored & displayed on dashboard
 
-![Force Plot](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/shap-lime/forcePlot.png)
+⚙️ Decision Logic Overview
+Risk Level	Action
+Low Risk	Approve
+Medium Risk	OTP Verification
+High Risk	Block
 
-## Model Deployment and API Development
+🚨 Velocity and contextual fraud rules can override decisions for security.
 
-### Running the Flask App
+🛠 Tech Stack
+Backend
 
-![Running Flask App](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/api-docker/run-flask.png)
+Python
 
-### Testing the API
+Flask
 
-![Testing the API](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/api-docker/test-flask.png)
+MongoDB
 
-### Building Docker Image
+XGBoost (Machine Learning Model)
 
-![Building Docker Image](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/api-docker/build-docker-image.png)
+Frontend
 
-### Running Docker Container
+React
 
-![Running Docker Container](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/api-docker/docker-run.png)
+TypeScript
 
-### Testing the API from Postman
+Dashboard Analytics UI
 
-Generated new instances and sent requests to the fraud detection model API.
+Services
 
-![Postman Testing](https://github.com/Daniel-Andarge/AiML-financial-fraud-detection-model/blob/main/assets/api-docker/postman_tst.png)
+Twilio OTP Verification
 
-## Project Report
+🔐 Fraud Detection Intelligence
 
-For a comprehensive overview of the project, please refer to the project report: [Project Report PDF](https://drive.google.com/file/d/1QaTrq0ID5fQkPboBedNT7lTdlgZ6Pkme/view).
+The system detects fraud using:
 
-## Contributing
+✔ Machine learning probability scoring
+✔ Behavioral spending analysis
+✔ Velocity detection (rapid attempts)
+✔ Device & location risk analysis
+✔ Trust-based risk reduction
 
-Contributions are welcome! Please fork the repository and submit a pull request.
+🧪 Test Scenarios Covered
 
-## License
+The system has been tested against:
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+First-time users
+
+Trusted user transactions
+
+High-value purchases
+
+New device detection
+
+Foreign location risks
+
+Rapid transaction attacks
+
+OTP verification failures
+
+🚀 How to Run the Project
+▶ Backend Setup
+cd flask-app
+pip install -r requirements.txt
+python serve_model.py
+▶ Payment Page (User Interface)
+cd payment-page
+npm install
+npm run dev
+▶ Fraud Monitoring Dashboard
+cd dashboard
+npm install
+npm run dev
+📊 Example Fraud Protection Flow
+
+✔ Normal transaction → Approved
+✔ Suspicious transaction → OTP verification
+✔ Rapid automated attempts → Blocked
+✔ Trusted users → Reduced friction
+
+📌 Real-World Applications
+
+Online payment gateways
+
+Banking fraud prevention systems
+
+E-commerce transaction monitoring
+
+Fintech risk management platforms
+
+👨‍💻 Team
+
+Om Pise
+Chetan Swami
+Arfat Patel
+Sneha Rani
