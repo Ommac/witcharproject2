@@ -1123,6 +1123,8 @@ def create_transaction():
         ]
 
     # Map API decision + mobile presence into stored status/decision
+    otp_sent = False
+    demo_otp = None
     if api_decision == "APPROVE":
         stored_status = "APPROVED"
         stored_decision = "ALLOW"
@@ -1130,6 +1132,13 @@ def create_transaction():
         if has_valid_mobile:
             stored_status = "OTP_PENDING"
             stored_decision = "VERIFY_OTP"
+            # Generate and store OTP for this mobile so /verify-otp can validate it.
+            otp = _generate_otp()
+            _otp_store[mobile_number] = otp
+            otp_sent = _send_otp_twilio(mobile_number, otp)
+            if not otp_sent:
+                # Demo / fallback: surface OTP in API response
+                demo_otp = otp
         else:
             # Safety: medium risk without a valid mobile is treated as high risk
             api_decision = "BLOCK"
@@ -1179,11 +1188,10 @@ def create_transaction():
     response_body = {
         "decision": api_decision,
         "risk_score": final_risk_score,
-        "adjusted_risk": float(adjusted_risk),
-        "trust_score": int(trust_score),
-        "reasons": decision_reasons,
-        "behavior_reasons": decision_reasons,
+        "behavior_reasons": combined_reasons,
     }
+    if demo_otp is not None:
+        response_body["demo_otp"] = str(demo_otp)
     return jsonify(response_body), 201
 
 

@@ -6,6 +6,8 @@ interface ApiSuccessResponse {
   decision: string;
   risk_score: number;
   behavior_reasons: string[];
+  otp_sent?: boolean;
+  demo_otp?: string | null;
 }
 
 const App: React.FC = () => {
@@ -19,6 +21,7 @@ const App: React.FC = () => {
   const [otpSubmitting, setOtpSubmitting] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpMobile, setOtpMobile] = useState<string | null>(null);
+  const [demoOtp, setDemoOtp] = useState<string | null>(null);
 
   const handleSubmit = async (values: PaymentFormValues) => {
     setLoading(true);
@@ -30,6 +33,7 @@ const App: React.FC = () => {
     setOtpInput("");
     setOtpError(null);
     setOtpMobile(null);
+    setDemoOtp(null);
 
     const payload: Record<string, unknown> = {
       user_id: values.userId.trim(),
@@ -94,6 +98,7 @@ const App: React.FC = () => {
       if (normalizedDecision === "OTP") {
         setOtpRequired(true);
         setOtpMobile(values.mobileNumber.replace(/\D/g, ""));
+        setDemoOtp(typeof body.demo_otp === "string" ? body.demo_otp : null);
       }
     } catch (err) {
       const message =
@@ -130,6 +135,7 @@ const App: React.FC = () => {
         setOtpRequired(false);
         setOtpMobile(null);
         setOtpInput("");
+        setDemoOtp(null);
       } else {
         setOtpError((data as any).error || "Invalid or expired OTP.");
       }
@@ -170,6 +176,11 @@ const App: React.FC = () => {
             <p className="otp-text">
               OTP sent to {maskMobile(otpMobile)}. Enter the 6-digit code to continue.
             </p>
+            {demoOtp && (
+              <p className="otp-text">
+                Demo OTP (local testing): <strong>{demoOtp}</strong>
+              </p>
+            )}
             <form onSubmit={handleVerifyOtp}>
               <input
                 type="text"
@@ -193,6 +204,7 @@ const App: React.FC = () => {
                     setOtpMobile(null);
                     setOtpInput("");
                     setOtpError(null);
+                    setDemoOtp(null);
                   }}
                   disabled={otpSubmitting}
                 >
